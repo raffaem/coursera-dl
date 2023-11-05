@@ -507,19 +507,27 @@ class ItemsV2(object):
 @attr.s
 class VideoV1(object):
     resolution = attr.ib()
-    mp4_video_url = attr.ib()
+    format = attr.ib()
+    video_url = attr.ib()
 
 
 @attr.s
 class VideosV1(object):
     children = attr.ib()
+    supported_url_keys: list[str] = ['mp4VideoUrl', 'webMVideoUrl']
+    supported_format: dict = {'mp4VideoUrl': 'mp4', 'webMVideoUrl': 'webm'}
+
+    @staticmethod
+    def get_video_format_and_link(links):
+        for l in VideosV1.supported_url_keys:
+            if l in links.keys():
+                return VideosV1.supported_format[l], links[l]
 
     @staticmethod
     def from_json(data):
-
-        videos = [VideoV1(resolution, links['mp4VideoUrl'])
+        videos = [VideoV1(resolution, *VideosV1.get_video_format_and_link(links))
                   for resolution, links
-                  in data['sources']['byResolution'].items()]
+                  in data['sources']['byResolution'].items() if set(VideosV1.supported_url_keys) & set(links.keys())]
         videos.sort(key=lambda video: video.resolution, reverse=True)
 
         videos = OrderedDict(
@@ -941,7 +949,7 @@ class CourseraOnDemand(object):
 
         def _add_asset(name, url, destination):
             filename, extension = os.path.splitext(clean_url(name))
-            if extension=='':
+            if extension == '':
                 return
 
             extension = clean_filename(
@@ -1052,7 +1060,7 @@ class CourseraOnDemand(object):
                 'Downloading highest resolution (%s) available instead.',
                 resolution, video_id, source.resolution)
 
-        video_content['mp4'] = source.mp4_video_url
+        video_content[source.format] = source.video_url
 
         subtitle_link = self._extract_subtitles_from_video_dom(
             dom, subtitle_language, video_id)
@@ -1586,7 +1594,7 @@ class CourseraOnDemand(object):
             filename, extension = os.path.splitext(clean_url(link))
             # Some courses put links to sites in supplement section, e.g.:
             # http://pandas.pydata.org/
-            if extension=='':
+            if extension == '':
                 continue
 
             # Make lowercase and cut the leading/trailing dot
