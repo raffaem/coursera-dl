@@ -517,7 +517,7 @@ class VideosV1(object):
     @staticmethod
     def from_json(data):
 
-        videos = [VideoV1(resolution, links['mp4VideoUrl'])
+        videos = [VideoV1(resolution, links.get('mp4VideoUrl', links.get('webmVideoUrl')))
                   for resolution, links
                   in data['sources']['byResolution'].items()]
         videos.sort(key=lambda video: video.resolution, reverse=True)
